@@ -5,6 +5,7 @@
 - [Module Goal](#module-goal)
 - [Subtopic Queue](#subtopic-queue)
 - [Subtopic 1 - Recursion Basics](#subtopic-1---recursion-basics)
+- [Head Recursion vs Tail Recursion](#head-recursion-vs-tail-recursion)
 - [Practice for This Subtopic](#practice-for-this-subtopic)
 - [Exit Criteria](#exit-criteria)
 - [Next Subtopics](#next-subtopics)
@@ -91,6 +92,255 @@ solve(state):
     answer = combine(solve(smaller_state_1), solve(smaller_state_2), ...)
     return answer
 ```
+
+### Head Recursion vs Tail Recursion
+
+This distinction matters because it changes when the current function does its work.
+
+- Head recursion: the recursive call happens first, and the current call does useful work while the stack is unwinding.
+- Tail recursion: the current call finishes all useful work before making the recursive call, so the recursive call is the last operation.
+
+Simple rule to remember:
+
+- If you need to do something after the recursive call returns, that is usually head recursion.
+- If you can pass everything needed into the next call and return its answer directly, that is usually tail recursion.
+
+In theory, tail recursion can be optimized into iteration by some languages or compilers. Java and Python do not guarantee tail-call optimization, so tail recursion here is mainly a thinking tool for writing cleaner state transitions.
+
+#### 1. Print 1 to n
+
+This is the easiest place to feel the difference.
+
+- In head recursion, you go deeper first and print while coming back.
+- In tail recursion, you print now and then move to the next call.
+
+Head recursion prints in ascending order only if you recurse down to `1` first and print on the way back.
+
+```java
+class PrintOneToN {
+   static void printHead(int n) {
+      if (n == 0) {
+         return;
+      }
+      printHead(n - 1);
+      System.out.print(n + " ");
+   }
+
+   static void printTail(int current, int n) {
+      if (current > n) {
+         return;
+      }
+      System.out.print(current + " ");
+      printTail(current + 1, n);
+   }
+}
+```
+
+```python
+def print_head(n: int) -> None:
+   if n == 0:
+      return
+   print_head(n - 1)
+   print(n, end=" ")
+
+
+def print_tail(current: int, n: int) -> None:
+   if current > n:
+      return
+   print(current, end=" ")
+   print_tail(current + 1, n)
+```
+
+Why these are different:
+
+- `printHead(n)` delays the print until smaller calls finish.
+- `printTail(current, n)` does the print before the recursive call, so no work is left after recursion.
+
+#### 2. Factorial
+
+Factorial is a strong example because the normal textbook version is head recursion, but it converts neatly into tail recursion by carrying the running product.
+
+Head-recursive idea:
+
+```text
+fact(n) = n * fact(n - 1)
+```
+
+Tail-recursive idea:
+
+```text
+fact(n, acc) = fact(n - 1, acc * n)
+```
+
+```java
+class FactorialExamples {
+   static int factorialHead(int n) {
+      if (n <= 1) {
+         return 1;
+      }
+      return n * factorialHead(n - 1);
+   }
+
+   static int factorialTail(int n) {
+      return factorialTailHelper(n, 1);
+   }
+
+   static int factorialTailHelper(int n, int acc) {
+      if (n <= 1) {
+         return acc;
+      }
+      return factorialTailHelper(n - 1, acc * n);
+   }
+}
+```
+
+```python
+def factorial_head(n: int) -> int:
+   if n <= 1:
+      return 1
+   return n * factorial_head(n - 1)
+
+
+def factorial_tail(n: int, acc: int = 1) -> int:
+   if n <= 1:
+      return acc
+   return factorial_tail(n - 1, acc * n)
+```
+
+What changed:
+
+- In the head version, multiplication happens after the recursive call returns.
+- In the tail version, the multiplication is done before the next call, and the partial answer is stored in `acc`.
+
+#### 3. Fibonacci
+
+Fibonacci is important because the usual recursive version is not tail recursive and also repeats work heavily.
+
+Head-recursive idea:
+
+```text
+fib(n) = fib(n - 1) + fib(n - 2)
+```
+
+This is a classic branching recursion. After the calls return, the current call still has to add them, so it is not tail recursion.
+
+To make Fibonacci tail recursive, we change the state. Instead of asking only for `fib(n)`, we carry the last two Fibonacci values forward.
+
+```java
+class FibonacciExamples {
+   static int fibonacciHead(int n) {
+      if (n <= 1) {
+         return n;
+      }
+      return fibonacciHead(n - 1) + fibonacciHead(n - 2);
+   }
+
+   static int fibonacciTail(int n) {
+      return fibonacciTailHelper(n, 0, 1);
+   }
+
+   static int fibonacciTailHelper(int n, int a, int b) {
+      if (n == 0) {
+         return a;
+      }
+      return fibonacciTailHelper(n - 1, b, a + b);
+   }
+}
+```
+
+```python
+def fibonacci_head(n: int) -> int:
+   if n <= 1:
+      return n
+   return fibonacci_head(n - 1) + fibonacci_head(n - 2)
+
+
+def fibonacci_tail(n: int, a: int = 0, b: int = 1) -> int:
+   if n == 0:
+      return a
+   return fibonacci_tail(n - 1, b, a + b)
+```
+
+Why this matters for DP thinking:
+
+- The head version exposes the recurrence clearly, so it is good for learning DP.
+- The tail version shows that sometimes you can redesign the state to carry exactly what the next step needs.
+
+#### 4. Steps and Stairs Problems
+
+For the common stairs problem, `ways(n)` means the number of ways to reach step `n` when you can take 1 or 2 steps.
+
+Head-recursive form:
+
+```text
+ways(n) = ways(n - 1) + ways(n - 2)
+```
+
+That form is best for discovering the DP recurrence, but it repeats states just like Fibonacci.
+
+For a tail-recursive version, carry the last two answers forward:
+
+- if you know `ways(i)` and `ways(i + 1)`
+- then the next pair becomes `ways(i + 1)` and `ways(i) + ways(i + 1)`
+
+```java
+class StairsExamples {
+   static int stairsHead(int n) {
+      if (n <= 1) {
+         return 1;
+      }
+      return stairsHead(n - 1) + stairsHead(n - 2);
+   }
+
+   static int stairsTail(int n) {
+      return stairsTailHelper(n, 1, 1);
+   }
+
+   static int stairsTailHelper(int remaining, int currentWays, int nextWays) {
+      if (remaining == 0) {
+         return currentWays;
+      }
+      return stairsTailHelper(remaining - 1, nextWays, currentWays + nextWays);
+   }
+}
+```
+
+```python
+def stairs_head(n: int) -> int:
+   if n <= 1:
+      return 1
+   return stairs_head(n - 1) + stairs_head(n - 2)
+
+
+def stairs_tail(remaining: int, current_ways: int = 1, next_ways: int = 1) -> int:
+   if remaining == 0:
+      return current_ways
+   return stairs_tail(remaining - 1, next_ways, current_ways + next_ways)
+```
+
+How to interpret the tail state:
+
+- `currentWays` is the answer for the current stair count.
+- `nextWays` is the answer for the next stair count.
+- Each recursive step shifts the window forward by one stair.
+
+#### When to prefer each style
+
+- Prefer head recursion when you are trying to discover the recurrence relation from the problem statement.
+- Prefer tail recursion when a running result or a small rolling state can fully describe the remaining work.
+- For DP interviews, write the head-recursive recurrence first because it makes overlapping subproblems visible.
+- For implementation, iteration is often better than either form in Java and Python when depth can grow large.
+
+#### Final takeaway
+
+Head recursion is better for learning the structure of a problem.
+
+Tail recursion is better for learning how to carry state forward without doing extra work after the recursive call.
+
+For DP, both are useful:
+
+- head recursion helps you discover the recurrence
+- tail recursion helps you think about state compression and iterative conversion
 
 ### Tiny Example: Climbing Stairs
 
